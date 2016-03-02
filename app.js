@@ -1,9 +1,29 @@
 var express = require('express');
-
+var path = require('path');
 var app = express();
 
-app.get('/', function (req, res) {
-  res.send('Hello World!');
+// express에게 ejs를 view engine으로 사용함을 알림
+app.set("view engine", 'ejs');
+app.use(express.static(path.join(__dirname + '/public')));
+
+var data = {count:0};
+app.get('/', function(req, res) {
+  data.count++;
+  res.render('my_first_ejs', data);
+});
+app.get('/reset', function(req, res) {
+  data.count=0;
+  res.render('my_first_ejs', data);
+});
+//http://localhost:8080/set/count?count=39
+app.get('/set/count', function(req, res) {
+  if(req.query.count) data.count=req.query.count;
+  res.render('my_first_ejs', data);
+});
+//http://localhost:8080/set/3
+app.get('/set/:num', function(req, res) {
+  data.count=req.params.num;
+  res.render('my_first_ejs', data);
 });
 
 app.listen(8080, function() {
