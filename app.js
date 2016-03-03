@@ -4,6 +4,7 @@ var path = require('path');
 var app = express();
 var mongoose = require('mongoose');
 var bodyParser = require('body-parser');
+var methodOverride = require('method-override');
 
 // connect database
 mongoose.connect(process.env.MONGO_DB);
@@ -32,41 +33,64 @@ app.set("view engine", 'ejs');
 
 // set middlewares
 app.use(express.static(path.join(__dirname, 'public')));
+//다른 프로그램이 JSON으로 데이터 전송을 할 경우 받는 body parser
 app.use(bodyParser.json()); // 모든 서버에 도착하는 신호들의 body를 JSON으로 분석
-
+//웹사이트가 JSON으로 데이터를 전송 할 경우 받는 body parser
+app.use(bodyParser.urlencoded({extended:true}));
+app.use(methodOverride("_method"));
 
 // set routes
 app.get('/posts', function(req, res) {
-  Post.find({}, function(err, posts) {
+  console.log("index");
+  // 데이터를 sort하고 exec함수로 수정
+  // -createdAt 으로 늦게 적은게 가장 위로 오게끔 함
+  Post.find({}).sort('-createdAt').exec(function (err, posts) {
     if(err) return res.json({success:false, message:err});
-    res.json({success:true, data:posts});
+    // view setting을 ejs로 해서 확장자 안적어도 됨
+    res.render("posts/index", {data:posts});
   });
 });// index
+app.get('/posts/new', function(req, res) {
+  console.log("new");
+  res.render('posts/new');
+});// new
 app.post('/posts', function(req, res) {
+  console.log("create");
   Post.create(req.body.post, function(err, post) {
     if(err) return res.json({success:false, message:err});
-    res.json({success:true, data:post});
+    //res.json({success:true, data:post});
+    res.redirect('/posts');// call index
   });
 });// create
 app.get('/posts/:id', function(req, res) {
+  console.log("show");
   Post.findById(req.params.id, function(err, post) {
     if(err) return res.json({success:false, message:err});
-    res.json({success:true, data:post});
+    res.render("posts/show", {data:post});
   });
 });// show
+app.get('/posts/:id/edit', function(req, res) {
+  console.log("edit");
+  Post.findById(req.params.id, function(err, post) {
+    if(err) return res.json({success:false, message:err});
+    res.render("posts/edit", {data:post});
+  });
+});// edit
 app.put('/posts/:id', function(req, res) {
+  console.log("update");
   req.body.post.updatedAt = Date.now();
   Post.findByIdAndUpdate(req.params.id, req.body.post, function(err, post) {
-    if(err) res.json({success:false, message:err});
-    res.json({success:true, message:post._id+" updated"});
+    if(err) return res.json({success:false, message:err});
+    res.redirect('/posts/' + req.params.id);
   });
 });// update
 app.delete('/posts/:id', function(req, res) {
+  console.log("destroy");
   Post.findByIdAndRemove(req.params.id, function(err, post) {
-    if(err) res.json({success:false, message:err});
-    res.json({success:true, message:post._id+" deleted"});
+    if(err) return res.json({success:false, message:err});
+    res.redirect('/posts');
   });
-})
+});// destroy
 
 // start Server
 app.listen(8080, function() {
