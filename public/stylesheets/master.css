@@ -12,7 +12,9 @@ ul{
   list-style-type: none;
   padding:0;
 }
-header h1{
+
+/* header h1{ */
+h1{
   color:tomato;
   text-align:center;
 }
@@ -29,19 +31,22 @@ footer{
   max-width: 500px;
   margin: 0 auto;
 }
-.posts h3{
+/* .posts h3{ */
+h3{
   background-color: #75CEF7;
   padding: 5px 0;
   padding-left: 2px;
 }
-.posts h2{
+/* .posts h2{ */
+h2{
   text-align:center;
 }
 .posts .index ul li{
   padding: 4px;
 }
-.posts .index ul li>span{
-  float:right;
+.posts .index ul li>span {
+  width: 90px;
+  float: right;
 }
 .posts .index ul li:nth-child(odd){
   background-color: #75CEF7;

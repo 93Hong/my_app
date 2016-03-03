@@ -3,6 +3,11 @@ var express = require('express');
 var path = require('path');
 var app = express();
 var mongoose = require('mongoose');
+// 이걸로 facebook 이용해서 로그인 하는것도 가능
+var passport = require('passport');
+var session = require('express-session');
+var flash = require('connect-flash');
+var async = require('async');
 var bodyParser = require('body-parser');
 var methodOverride = require('method-override');
 
@@ -28,6 +33,14 @@ var postSchema = mongoose.Schema({
 //두번째 인자는 mongoose.Schema() 함수로 생성된 스키마변수입니다
 var Post = mongoose.model('post', postSchema);
 
+var userSchema = mongoose.Schema({
+  email: {type:String, required:true, unique:true},
+  nickname: {type:String, required:true, unique:true},
+  password: {type:String, required:true},
+  createdAt: {type:Date, default:Date.now}
+});
+var User = mongoose.model('user', userSchema);
+
 // view setting
 app.set("view engine", 'ejs');
 
@@ -38,6 +51,69 @@ app.use(bodyParser.json()); // 모든 서버에 도착하는 신호들의 body�
 //웹사이트가 JSON으로 데이터를 전송 할 경우 받는 body parser
 app.use(bodyParser.urlencoded({extended:true}));
 app.use(methodOverride("_method"));
+app.use(flash());
+
+app.use(session({secret:'MySecret'}));
+app.use(passport.initialize());
+app.use(passport.session());
+// session 생성 시에 어떠한 정보를 저장할지를 설정
+passport.serializeUser(function(user, done) {
+  done(null, user.id);//user.id(db id)를 session에 저장
+});
+//session으로 부터 개체를 가져올 때 어떻게 가져올 지를 설정
+passport.deserializeUser(function(id, done) {
+  User.findById(id, function(err, user) {//session에 저장된 id로 user를 찾음
+    done(err, user);
+  });
+});
+
+var LocalStrategy = require('passport-local').Strategy;
+passport.use('local-login',
+  new LocalStrategy({
+      usernameField: 'email',
+      passwordField: 'password',
+      passReqToCallback: true
+    },
+    function(req, email, password, done) {
+      User.findOne({'email':email}, function(err, user) {
+        if(err) return done(err);
+        if(!user) {
+          req.flash('email', req.body.email);
+          return done(null, false, req.flash('loginError', 'No user found.'));
+        }
+        return done(null, user);
+      });
+    }
+  )
+);
+
+// set home routes
+app.get('/', function(req, res) {
+  res.redirect('/posts');
+});
+app.get('/login', function(req, res) {
+  res.render('login/login', {email:req.flash('email')[0], loginError:req.flash('loginError')});
+});
+app.post('/login',
+  function(req, res, next) {
+    req.flash('email');
+    if(req.body.email.length === 0 || req.body.password.length === 0) {
+      req.flash('email', req.body,email);
+      req.flash('loginError', 'Please enter both email and password.');
+      res.redirect('/login');
+    } else {
+      next();
+    }
+  }, passport.authenticate('local-login', {
+    successRedirect: '/posts',
+    failureRedirect: '/login',
+    failureFlash: true
+  })
+);
+app.get('/logout', function(req, res) {
+  req.logout();
+  res.redirect('/');
+});
 
 // set routes
 app.get('/posts', function(req, res) {
